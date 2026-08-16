@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recruiter Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { color: #28a745; margin: 0; font-size: 24px; }
+        .logout-btn { background: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .form-panel, .my-jobs-panel, .applications-panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button.submit-btn { background: #007bff; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        .status-box { background: #e9ecef; padding: 10px; border-radius: 4px; margin-top: 15px; display: none; text-align: center; font-weight: bold; }
+        .job-item, .app-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
+        .job-item:last-child, .app-item:last-child { border-bottom: none; }
+        .delete-btn { background: #dc3545; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .delete-btn:hover { background: #c82333; }
+        .status-select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: capitalize; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-accepted { background: #d4edda; color: #155724; }
+        .badge-rejected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Recruiter Panel 💼</h1>
+            <div>
+                <span id="welcomeMsg" style="margin-right: 15px; font-weight: bold;"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Section 1: Post a Job -->
+        <div class="form-panel">
+            <h2>Post a New Job Opening</h2>
+            <div class="form-group">
+                <label>Job Title</label>
+                <input type="text" id="jobTitle" value="Backend Engineer (Node.js)">
+            </div>
+            <div class="form-group">
+                <label>Company Name</label>
+                <input type="text" id="jobCompany" value="KABi Technologies">
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" id="jobLocation" value="Riyadh, Hittin">
+            </div>
+            <div class="form-group">
+                <label>Requirements (Comma separated)</label>
+                <input type="text" id="jobRequirements" value="Node.js, MongoDB, JWT">
+            </div>
+            <button class="submit-btn" onclick="handleAddJob()">Publish Job Now</button>
+            <div id="statusBox" class="status-box"></div>
+        </div>
+
+        <!-- Section 2: Received Applications -->
+        <div class="applications-panel">
+            <h2>Applications Received 📄</h2>
+            <div id="applicationsList">Loading applications...</div>
+        </div>
+
+        <!-- Section 3: My Posted Jobs -->
+        <div class="my-jobs-panel">
+            <h2>Your Posted Jobs</h2>
+            <div id="myJobsList">Loading your jobs...</div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('welcomeMsg').textContent = `Welcome, ${localStorage.getItem('username') || 'Recruiter'}`;
+        const token = localStorage.getItem('token');
+
+        window.onload = function() {
+            loadMyJobs();
+            loadRecruiterApplications();
+        };
+
+        // 1. Fetch posted jobs
+        async function loadMyJobs() {
+            const myJobsList = document.getElementById('myJobsList');
+            if (!token) return;
+
+            try {
+                const response = await fetch('/api/jobs/my-jobs', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const jobs = await response.json();
+
+                if (jobs.length === 0) {
+                    myJobsList.innerHTML = "<p style='color: #666;'>You haven't posted any jobs yet.</p>";
+                    return;
+                }
+
+                myJobsList.innerHTML = "";
+                jobs.forEach(job => {
+                    const jobItem = document.createElement('div');
+                    jobItem.className = 'job-item';
+                    jobItem.innerHTML = `
+                        <div>
+                            <strong style="font-size: 16px;">${job.title}</strong> <span style="color: #666;">(${job.company})</span>
+                            <div style="font-size: 13px; color: #888; margin-top: 4px;">📍 ${job.location}</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteJob('${job._id}')">Delete</button>
+                    `;
+                    myJobsList.appendChild(jobItem);
+                });
+            } catch (err) {
+                myJobsList.innerHTML = `<p style="color: red;">Error loading jobs: ${err.message}</p>`;
+            }
+        }
+
+        // 2. Fetch candidates applications for recruiter jobs
+        async function loadRecruiterApplications() {
+            const applicationsList = document.getElementById('applicationsList');
+            if (!token) return;
+
+            try {
+                const response = await fetch('/api/applications/recruiter/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                if (!data.success || data.applications.length === 0) {
+                    applicationsList.innerHTML = "<p style='color: #666;'>No applications received yet.</p>";
+                    return;
+                }
+
+                applicationsList.innerHTML = "";
+                data.applications.forEach(app => {
+const candidateName = app.candidateId ? (app.candidateId.name || app.candidateId.username || 'Candidate') : 'Candidate';                    const candidateEmail = app.candidateId ? app.candidateId.email : 'N/A';
+                    const jobTitle = app.jobId ? app.jobId.title : 'Job Opening';
+
+                    const appItem = document.createElement('div');
+                    appItem.className = 'app-item';
+                    appItem.innerHTML = `
+                        <div>
+                            <strong style="font-size: 16px;">👤 ${candidateName}</strong> (${candidateEmail})
+                            <div style="font-size: 13px; color: #555; margin-top: 4px;">Applied for: <b>${jobTitle}</b></div>
+                            <div style="font-size: 13px; color: #007bff; margin-top: 4px;">
+                                📎 Resume: <a href="${app.resumeUrl}" target="_blank">${app.resumeUrl}</a>
+                            </div>
+                        </div>
+                        <div>
+                            <select class="status-select" onchange="updateStatus('${app._id}', this.value)">
+                                <option value="pending" ${app.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="accepted" ${app.status === 'accepted' ? 'selected' : ''}>Accepted</option>
+                                <option value="rejected" ${app.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                            </select>
+                        </div>
+                    `;
+                    applicationsList.appendChild(appItem);
+                });
+            } catch (err) {
+                applicationsList.innerHTML = `<p style="color: red;">Error loading applications: ${err.message}</p>`;
+            }
+        }
+
+        // 3. Update Application Status
+        async function updateStatus(applicationId, newStatus) {
+            try {
+                const response = await fetch(`/api/applications/${applicationId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    alert(`✅ Application status changed to: ${newStatus}`);
+                } else {
+                    const data = await response.json();
+                    alert(`❌ Failed to update status: ${data.message}`);
+                }
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            }
+        }
+
+        // 4. Publish new job
+        async function handleAddJob() {
+            const statusBox = document.getElementById('statusBox');
+            if (!token) return;
+
+            const title = document.getElementById('jobTitle').value;
+            const company = document.getElementById('jobCompany').value;
+            const location = document.getElementById('jobLocation').value;
+            const requirements = document.getElementById('jobRequirements').value.split(',').map(r => r.trim());
+
+            try {
+                const response = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ title, company, location, requirements, description: "Posted via Recruiter Dashboard." })
+                });
+
+                if (response.ok) {
+                    statusBox.textContent = "✅ Job posted successfully!";
+                    statusBox.style.background = "#d4edda";
+                    statusBox.style.color = "#155724";
+                    loadMyJobs(); 
+                } else {
+                    const data = await response.json();
+                    statusBox.textContent = `❌ Failed: ${data.message}`;
+                    statusBox.style.background = "#f8d7da";
+                    statusBox.style.color = "#721c24";
+                }
+                statusBox.style.display = "block";
+            } catch (err) {
+                statusBox.textContent = `Connection Error: ${err.message}`;
+                statusBox.style.display = "block";
+            }
+        }
+
+        // 5. Delete Job
+        async function deleteJob(jobId) {
+            if (!confirm("Are you sure you want to delete this job opening?")) return;
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    loadMyJobs(); 
+                    loadRecruiterApplications();
+                } else {
+                    const data = await response.json();
+                    alert(`❌ Error: ${data.message}`);
+                }
+            } catch (err) {
+                alert(`Connection Error: ${err.message}`);
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>

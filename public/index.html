@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Public Job Board</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
+        .container { max-width: 800px; margin: auto; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { color: #007bff; margin: 0; font-size: 24px; }
+        .nav-btn { background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; }
+        .nav-btn.logout { background: #dc3545; }
+        .job-card { background: white; border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .job-title { margin: 0 0 10px 0; color: #333; }
+        .badge { background: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="navbar">
+            <h1>Available Careers 🎯</h1>
+            <div id="navActions">
+                <a href="/login.html" class="nav-btn">Login / Register</a>
+            </div>
+        </div>
+
+        <h2>Latest Job Openings</h2>
+        <div id="jobsList">Loading jobs...</div>
+    </div>
+
+    <script>
+        window.onload = async function() {
+            const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
+            const navActions = document.getElementById('navActions');
+
+            if (token && username) {
+                navActions.innerHTML = `
+                    <span style="margin-right: 15px; font-weight: bold;">Welcome, ${username}</span>
+                    <button class="nav-btn logout" onclick="logout()">Logout</button>
+                `;
+            }
+
+            const jobsList = document.getElementById('jobsList');
+            try {
+                const response = await fetch('/api/jobs');
+                const jobs = await response.json();
+
+                if (jobs.length === 0) {
+                    jobsList.innerHTML = "<p>No jobs available at the moment.</p>";
+                    return;
+                }
+
+                jobsList.innerHTML = "";
+                jobs.forEach(job => {
+                    const jobCard = document.createElement('div');
+                    jobCard.className = 'job-card';
+                    jobCard.innerHTML = `
+                        <h3 class="job-title">${job.title}</h3>
+                        <span class="badge">${job.company}</span>
+                        <p>📍 <strong>Location:</strong> ${job.location}</p>
+                        <p>🛠️ <strong>Requirements:</strong> ${job.requirements.join(', ')}</p>
+                    `;
+                    jobsList.appendChild(jobCard);
+                });
+            } catch (err) {
+                jobsList.innerHTML = `<p style="color: red;">Error fetching jobs: ${err.message}</p>`;
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

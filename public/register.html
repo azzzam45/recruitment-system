@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - Recruitment System</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .register-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #28a745; text-align: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #28a745; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+        button:hover { background: #218838; }
+        .footer-link { text-align: center; margin-top: 20px; font-size: 14px; }
+        .footer-link a { color: #007bff; text-decoration: none; font-weight: bold; }
+        .status-box { padding: 10px; border-radius: 4px; margin-top: 15px; display: none; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="register-card">
+        <h2>Create New Account</h2>
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="regUsername" placeholder="e.g., azaam_dev" required>
+        </div>
+        <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="regEmail" placeholder="e.g., name@example.com" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="regPassword" required>
+        </div>
+        <div class="form-group">
+            <label>Account Type (Role)</label>
+            <select id="regRole">
+                <option value="candidate">Candidate (Job Seeker)</option>
+                <option value="recruiter">Recruiter (Employer)</option>
+            </select>
+        </div>
+        <button onclick="handleRegister()">Register Now</button>
+        
+        <div class="footer-link">
+            Already have an account? <a href="/login.html">Login here</a>
+        </div>
+
+        <div id="statusBox" class="status-box"></div>
+    </div>
+
+    <script>
+        async function handleRegister() {
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+            const statusBox = document.getElementById('statusBox');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, role })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusBox.innerHTML = "✅ Registration successful! Redirecting to login...";
+                    statusBox.style.background = "#d4edda";
+                    statusBox.style.color = "#155724";
+                    statusBox.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 1000);
+                } else {
+                    statusBox.innerHTML = `❌ ${data.message}`;
+                    statusBox.style.background = "#f8d7da";
+                    statusBox.style.color = "#721c24";
+                    statusBox.style.display = 'block';
+                }
+            } catch (err) {
+                statusBox.innerHTML = `Error: ${err.message}`;
+                statusBox.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
